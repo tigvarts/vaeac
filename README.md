@@ -16,6 +16,13 @@ To run experiments with CelebA download dataset into some directory, unzip `img_
 
 So far the experiments are mostly about image inpainitng.
 
+Example of inpainitngs generated with UCM. Left column: input. The gray pixels are unobserved. Middle: UCM inpaintings. Right column: ground truth.
+
+![MNIST inpaintings](images/mnist.png)MNIST inpaintings|![CelebA inpaintings](images/celeba.jpg)CelebA inpaintings
+-|-
+
+Notebooks with experiments:
+
  - MNIST.ipynb - MNIST inpainting using UCM
  - MNIST_gsnn.ipynb - MNIST inpainting using GSNN (special case of UCM, work much worse)
  - MNIST_um.ipynb - MNIST inpainting using Universal Marginalizer (concurrent model)
