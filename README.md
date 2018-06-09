@@ -2,11 +2,10 @@
 
 Universal Conditional Machine (UCM) is a neural probabilistic model based on variational autoencoder that can be conditioned on an arbitrary subset of observed features and then sample the remaining features.
 
-This code implements UCM and provides jupyter notebooks with some experiments with the model.
-
 Paper describing the project:
-
 Oleg Ivanov, Michael Figurnov, Dmitry Vetrov. Universal Conditional Machine. arXiv preprint [arXiv:1806.02382](http://arxiv.org/abs/1806.02382).
+
+This code implements UCM and provides jupyter notebooks with some experiments with the model.
 
 ## Setup
 
