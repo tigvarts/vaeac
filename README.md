@@ -16,7 +16,7 @@ from the paper.
 ## Setup
 
 Install prerequisites from `requirements.txt`.
-This code was tested on Linux (but it should on Windows as well),
+This code was tested on Linux (but it should work on Windows as well),
 Python 3.6.4 and PyTorch 1.0.
 
 To run experiments with CelebA download dataset into some directory,

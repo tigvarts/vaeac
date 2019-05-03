@@ -3,5 +3,3 @@ __pycache__
 *.tar
 *.tsv
 *.jpg
-*.data
-*.csv
