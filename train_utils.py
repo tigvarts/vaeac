@@ -1,50 +1,64 @@
 import torch
-from torch.utils.data import DataLoader
-from torch import optim
-from torch.autograd import Variable
+from tqdm import tqdm
 
-def train_model(train_data, model, generate_mask, generate_weights=None,
-                tests=[], test_freq=200, batch_size=128, num_epochs=50,
-                learning_rate=1e-3, verbose_update_freq=50, num_workers=0):
-    gd = optim.Adam(model.parameters(), lr=learning_rate)
-    dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    total_batches = len(dataloader)
-    train_losses = []
-    test_results = []
-    model = model.cuda()
-    for epoch in range(num_epochs):
-        for i, batch in enumerate(dataloader):
-            if isinstance(batch, tuple) or isinstance(batch, list):
-                batch = batch[0]
-            batch = batch.view(batch.shape[0], -1)
-            model.train()
-            x, b = Variable(batch), Variable(generate_mask(batch.size(0)))
-            if generate_weights:
-                w = Variable(generate_weights(x.data, b.data))
-            else:
-                w = None
-            if next(model.parameters()).is_cuda:
-                x = x.cuda()
-                b = b.cuda()
-                if w is not None:
-                    w = w.cuda()
-            loss = model.batch_loss((x, b), w)
-            (-loss).backward()
-            train_losses.append(float(loss))
-            if i % verbose_update_freq == 0 or i == total_batches - 1:
-                print('\rEpoch', epoch, 'Train loss', train_losses[-1],
-                      'Batch', i + 1, 'of', total_batches, ' ' * 10, end='', flush=True)
-            if i % test_freq == 0:
-                cur_test_result = {}
-                for test in tests:
-                    cur_test_result[test['name']] = test['func'](model)
-                test_results.append(cur_test_result)
-            gd.step()
-            gd.zero_grad()
-        print(flush=True)
-    model.eval()
-    return {
-        'model': model.cpu(),
-        'train_losses_list': train_losses,
-        'test_results': test_results
-    }
+
+def extend_batch(batch, dataloader, batch_size):
+    """
+    If the batch size is less than batch_size, extends it with
+    data from the dataloader until it reaches the required size.
+    Here batch is a tensor.
+    Returns the extended batch.
+    """
+    while batch.shape[0] != batch_size:
+        dataloader_iterator = iter(dataloader)
+        nw_batch = next(dataloader_iterator)
+        if nw_batch.shape[0] + batch.shape[0] > batch_size:
+            nw_batch = nw_batch[:batch_size - batch.shape[0]]
+        batch = torch.cat([batch, nw_batch], 0)
+    return batch
+
+
+def extend_batch_tuple(batch, dataloader, batch_size):
+    """
+    The same as extend_batch, but here the batch is a list of tensors
+    to be extended. All tensors are assumed to have the same first dimension.
+    Returns the extended batch (i. e. list of extended tensors).
+    """
+    while batch[0].shape[0] != batch_size:
+        dataloader_iterator = iter(dataloader)
+        nw_batch = next(dataloader_iterator)
+        if nw_batch[0].shape[0] + batch[0].shape[0] > batch_size:
+            nw_batch = [nw_t[:batch_size - batch[0].shape[0]]
+                        for nw_t in nw_batch]
+        batch = [torch.cat([t, nw_t], 0) for t, nw_t in zip(batch, nw_batch)]
+    return batch
+
+
+def get_validation_iwae(val_dataloader, mask_generator, batch_size,
+                        model, num_samples, verbose=False):
+    """
+    Compute mean IWAE log likelihood estimation of the validation set.
+    Takes validation dataloader, mask generator, batch size, model (VAEAC)
+    and number of IWAE latent samples per object.
+    Returns one float - the estimation.
+    """
+    cum_size = 0
+    avg_iwae = 0
+    iterator = val_dataloader
+    if verbose:
+        iterator = tqdm(iterator)
+    for batch in iterator:
+        init_size = batch.shape[0]
+        batch = extend_batch(batch, val_dataloader, batch_size)
+        mask = mask_generator(batch)
+        if next(model.parameters()).is_cuda:
+            batch = batch.cuda()
+            mask = mask.cuda()
+        with torch.no_grad():
+            iwae = model.batch_iwae(batch, mask, num_samples)[:init_size]
+            avg_iwae = (avg_iwae * (cum_size / (cum_size + iwae.shape[0])) +
+                        iwae.sum() / (cum_size + iwae.shape[0]))
+            cum_size += iwae.shape[0]
+        if verbose:
+            iterator.set_description('Validation IWAE: %g' % avg_iwae)
+    return float(avg_iwae)

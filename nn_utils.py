@@ -1,101 +1,95 @@
 import torch
 from torch import nn
 
-class Reshape(nn.Module):
-    def __init__(self, *args):
-        super(type(self), self).__init__()
-        self.dims = args
+
+class ResBlock(nn.Module):
+    """
+    Usual full pre-activation ResNet bottleneck block.
+    For more information see
+    He, K., Zhang, X., Ren, S., & Sun, J. (2016, October).
+    Identity mappings in deep residual networks.
+    European Conference on Computer Vision (pp. 630-645).
+    Springer, Cham.
+    ArXiv link: https://arxiv.org/abs/1603.05027
+    """
+
+    def __init__(self, outer_dim, inner_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.BatchNorm2d(outer_dim),
+            nn.LeakyReLU(),
+            nn.Conv2d(outer_dim, inner_dim, 1),
+            nn.BatchNorm2d(inner_dim),
+            nn.LeakyReLU(),
+            nn.Conv2d(inner_dim, inner_dim, 3, 1, 1),
+            nn.BatchNorm2d(inner_dim),
+            nn.LeakyReLU(),
+            nn.Conv2d(inner_dim, outer_dim, 1),
+        )
 
     def forward(self, input):
-        return input.view(input.size(0), *self.dims)
+        return input + self.net(input)
 
-class MemData(nn.Module):
-    def __init__(self):
-        super(type(self), self).__init__()
+
+class MemoryLayer(nn.Module):
+    """
+    If output=False, this layer stores its input in a static class dictionary
+    `storage` with the key `id` and then passes the input to the next layer.
+    If output=True, this layer takes stored tensor from a static storage.
+    If add=True, it returns sum of the stored vector and an input,
+    otherwise it returns their concatenation.
+    If the tensor with specified `id` is not in `storage` when the layer
+    with output=True is called, it would cause an exception.
+
+    The layer is used to make skip-connections inside nn.Sequential network
+    or between several nn.Sequential networks without unnecessary code
+    complication.
+    The usage pattern is
+    ```
+        net1 = nn.Sequential(
+            MemoryLayer('#1'),
+            MemoryLayer('#0.1'),
+            nn.Linear(512, 256),
+            nn.LeakyReLU(),
+            MemoryLayer('#0.1', output=True, add=False),
+            # here add cannot be True because the dimensions mismatch
+            nn.Linear(768, 256),
+            # the dimension after the concatenation with skip-connection
+            # is 512 + 256 = 768
+        )
+        net2 = nn.Sequential(
+            nn.Linear(512, 512),
+            MemoryLayer('#1', output=True, add=True),
+            ...
+        )
+        b = net1(a)
+        d = net2(c)
+        # net2 must be called after net1,
+        # otherwise tensor '#1' will not be in `storage`
+    ```
+    """
+
+    storage = {}
+
+    def __init__(self, id, output=False, add=False):
+        super().__init__()
+        self.id = id
+        self.output = output
+        self.add = add
 
     def forward(self, input):
-        self.data = input
-        return input
-
-    def get_memory(self):
-        return self.data
-
-class AddSkipConnection(nn.Module):
-    def __init__(self, memory):
-        super(type(self), self).__init__()
-        self.memory = memory
-
-    def forward(self, input):
-        data = self.memory.get_memory()
-        n_data = data.size(0)
-        n_input = input.size(0)
-        shape = data.shape[1:]
-        if n_data == n_input:
-            return data + input
-        return (input.view(n_data, -1, *shape) + data.view(n_data, 1, *shape)).view(-1, *shape)
-
-class MergeSkipConnection(nn.Module):
-    def __init__(self, memory):
-        super(type(self), self).__init__()
-        self.memory = memory
-
-    def forward(self, input):
-        data = self.memory.get_memory()
-        n_data = data.size(0)
-        n_input = input.size(0)
-        l_data = data.size(1)
-        l_input = input.size(1)
-        K = n_input // n_data
-        shape = data.shape[2:]
-        if n_data == n_input:
-            return torch.cat([input, data], 1)
-        return torch.cat(
-            [
-                input.view(n_data, K, l_input, *shape),
-                data.view(n_data, 1, l_data, *shape).repeat(1, K, 1, *([1] * len(shape)))
-            ],
-            2).view(n_input, l_input + l_data, *shape)
-
-class ResNetBlock(nn.Module):
-    def __init__(self, inplanes, planes, stride=1, batchnorm=True, bias=False):
-        super(type(self), self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=3, padding=1, stride=stride, bias=bias)
-        if batchnorm:
-            self.bn1 = nn.BatchNorm2d(planes)
+        if not self.output:
+            self.storage[self.id] = input
+            return input
         else:
-            self.bn1 = None
-        self.leaky_relu = nn.LeakyReLU(inplace=True)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, padding=1, bias=bias)
-        if batchnorm:
-            self.bn2 = nn.BatchNorm2d(planes)
-        else:
-            self.bn2 = None
-        self.stride = stride
-        if stride != 1 or inplanes != planes:
-            self.downsample = nn.Sequential(
-                nn.Conv2d(inplanes, planes,
-                          kernel_size=1, stride=stride, bias=bias),
-                nn.BatchNorm2d(planes),
-            )
-        else:
-            self.downsample = None
-
-    def forward(self, input):
-        residual = input
-
-        out = self.conv1(input)
-        if self.bn1 is not None:
-            out = self.bn1(out)
-        out = self.leaky_relu(out)
-
-        out = self.conv2(out)
-        if self.bn2 is not None:
-            out = self.bn2(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(input)
-
-        out += residual
-        out = self.leaky_relu(out)
-
-        return out
+            if self.id not in self.storage:
+                err = 'MemoryLayer: id \'%s\' is not initialized. '
+                err += 'You must execute MemoryLayer with the same id '
+                err += 'and output=False before this layer.'
+                raise ValueError(err)
+            stored = self.storage[self.id]
+            if not self.add:
+                data = torch.cat([input, stored], 1)
+            else:
+                data = input + stored
+            return data
