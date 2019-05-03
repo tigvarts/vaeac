@@ -34,7 +34,7 @@ It takes tab-separated values (tsv) file as an input.
 NaNs in the input file indicate the missing features.
 
 The output file is also a tsv file, where for each object
-there is `num\_imputations` copies of it with NaNs replaced
+there is `num_imputations` copies of it with NaNs replaced
 with different imputations.
 
 One-hot max size is the number of different values of a categorical feature.
