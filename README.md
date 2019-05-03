@@ -5,7 +5,7 @@ a neural probabilistic model based on variational autoencoder
 that can be conditioned on an arbitrary subset of observed features and
 then sample the remaining features.
 
-For more detail, see the following paper:\\
+For more detail, see the following paper:\
 Oleg Ivanov, Michael Figurnov, Dmitry Vetrov.
 Variational Autoencoder with Arbitrary Conditioning, ICLR 2019,
 [link](https://openreview.net/forum?id=SyxtJh0qYm).
@@ -16,7 +16,8 @@ from the paper.
 ## Setup
 
 Install prerequisites from `requirements.txt`.
-This code was tested on Python 3.6.4 and PyTorch 1.0.
+This code was tested on Linux (but it should on Windows as well),
+Python 3.6.4 and PyTorch 1.0.
 
 To run experiments with CelebA download dataset into some directory,
 unzip `img_align_celeba.zip` and set correct `celeba_root_dir`
