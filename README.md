@@ -43,7 +43,7 @@ where K is one-hot max size.
 For the real-valued feature one-hot max size is assumed to be 0 or 1.
 
 For example, for a dataset with a binary feature, three real-valued features
-and a categorical feature with 10 classes the correct `--one-hot-max-sizes
+and a categorical feature with 10 classes the correct `--one_hot_max_sizes`
 arguments are 2 1 1 1 10.
 
 Validation ratio is the ratio of objects which will be used for validation
