@@ -36,6 +36,18 @@ NaNs in the input file indicate the missing features.
 The output file is also a tsv file, where for each object
 there is `num_imputations` copies of it with NaNs replaced
 with different imputations.
+These copies with imputations are consecutive in the output file.
+For example, if `num_imputations` is 2,
+then the output file is structured as follows
+```
+object1_imputation1
+object1_imputation2
+object2_imputation1
+object2_imputation2
+object3_imputation1
+...
+```
+By default `num_imputations` is 5.
 
 One-hot max size is the number of different values of a categorical feature.
 The values are assumed to be integers from 0 to K - 1,
