@@ -2,7 +2,7 @@ from torch import nn
 from torch.optim import Adam
 
 from mask_generators import ImageMaskGenerator
-from nn_utils import ResBlock, MemoryLayer
+from nn_utils import ResBlock, MemoryLayer, SkipConnection
 from prob_utils import normal_parse_params, GaussianLoss
 
 
@@ -26,6 +26,13 @@ mask_generator = ImageMaskGenerator()
 # by this scale factor right before backpropagation
 vlb_scale_factor = 128 ** 2
 
+def MLPBlock(dim):
+    return SkipConnection(
+        nn.BatchNorm2d(dim),
+        nn.LeakyReLU(),
+        nn.Conv2d(dim, dim, 1)
+    )
+
 proposal_network = nn.Sequential(
     nn.Conv2d(6, 8, 1),
     ResBlock(8, 8), ResBlock(8, 8), ResBlock(8, 8), ResBlock(8, 8),
@@ -43,9 +50,8 @@ proposal_network = nn.Sequential(
     nn.AvgPool2d(2, 2), nn.Conv2d(128, 256, 1),
     ResBlock(256, 128), ResBlock(256, 128),
     ResBlock(256, 128), ResBlock(256, 128),
-    nn.AvgPool2d(2, 2),
-    nn.Conv2d(256, 512, 1), nn.Conv2d(512, 512, 1),
-    nn.Conv2d(512, 512, 1), nn.Conv2d(512, 512, 1),
+    nn.AvgPool2d(2, 2), nn.Conv2d(256, 512, 1),
+    MLPBlock(512), MLPBlock(512), MLPBlock(512), MLPBlock(512),
 )
 
 prior_network = nn.Sequential(
@@ -73,14 +79,13 @@ prior_network = nn.Sequential(
     ResBlock(256, 128), ResBlock(256, 128),
     ResBlock(256, 128), ResBlock(256, 128),
     MemoryLayer('#7'),
-    nn.AvgPool2d(2, 2),
-    nn.Conv2d(256, 512, 1), nn.Conv2d(512, 512, 1),
-    nn.Conv2d(512, 512, 1), nn.Conv2d(512, 512, 1),
+    nn.AvgPool2d(2, 2), nn.Conv2d(256, 512, 1),
+    MLPBlock(512), MLPBlock(512), MLPBlock(512), MLPBlock(512),
 )
 
 generative_network = nn.Sequential(
-    nn.Conv2d(256, 256, 1), nn.Conv2d(256, 256, 1),
-    nn.Conv2d(256, 256, 1), nn.Conv2d(256, 256, 1),
+    nn.Conv2d(256, 256, 1),
+    MLPBlock(256), MLPBlock(256), MLPBlock(256), MLPBlock(256),
     nn.Conv2d(256, 128, 1), nn.Upsample(scale_factor=2),
     MemoryLayer('#7', True), nn.Conv2d(384, 128, 1),
     ResBlock(128, 64), ResBlock(128, 64),

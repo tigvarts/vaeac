@@ -2,7 +2,7 @@ from torch import nn
 from torch.optim import Adam
 
 from mask_generators import MCARGenerator
-from nn_utils import ResBlock, MemoryLayer
+from nn_utils import ResBlock, MemoryLayer, SkipConnection
 from prob_utils import CategoricalToOneHotLayer, GaussianCategoricalLoss, \
                        GaussianCategoricalSampler, SetGaussianSigmasToOne
 
@@ -33,12 +33,12 @@ def get_imputation_networks(one_hot_max_sizes):
         nn.LeakyReLU(),
     ]
     for i in range(depth):
-        proposal_layers.extend([
-            MemoryLayer('#0.%d' % i),
-            nn.Linear(width, width),
-            nn.LeakyReLU(),
-            MemoryLayer('#0.%d' % i, True, True),
-        ])
+        proposal_layers.append(
+            SkipConnection(
+                nn.Linear(width, width),
+                nn.LeakyReLU(),
+            )
+        )
     proposal_layers.append(
         nn.Linear(width, latent_dim * 2)
     )
@@ -55,14 +55,14 @@ def get_imputation_networks(one_hot_max_sizes):
         nn.LeakyReLU(),
     ]
     for i in range(depth):
-        prior_layers.extend([
-            # skip-connection from prior network to generative network
-            MemoryLayer('#%d' % i),
-            MemoryLayer('#1.%d' % i),
-            nn.Linear(width, width),
-            nn.LeakyReLU(),
-            MemoryLayer('#1.%d' % i, True, True),
-        ])
+        prior_layers.append(
+            SkipConnection(
+                # skip-connection from prior network to generative network
+                MemoryLayer('#%d' % i),
+                nn.Linear(width, width),
+                nn.LeakyReLU(),
+            )
+        )
     prior_layers.extend([
         MemoryLayer('#%d' % depth),
         nn.Linear(width, latent_dim * 2),
@@ -75,14 +75,14 @@ def get_imputation_networks(one_hot_max_sizes):
         nn.LeakyReLU(),
     ]
     for i in range(depth + 1):
-        generative_layers.extend([
-            MemoryLayer('#2.%d' % i),
-            # skip-connection from prior network to generative network
-            MemoryLayer('#%d' % (depth - i), True),
-            nn.Linear(width * 2, width),
-            nn.LeakyReLU(),
-            MemoryLayer('#2.%d' % i, True, True),
-        ])
+        generative_layers.append(
+            SkipConnection(
+                # skip-connection from prior network to generative network
+                MemoryLayer('#%d' % (depth - i), True),
+                nn.Linear(width * 2, width),
+                nn.LeakyReLU(),
+            )
+        )
     generative_layers.extend([
         MemoryLayer('#input', True),
         nn.Linear(width + sum(max(1, x) for x in one_hot_max_sizes) +

@@ -31,6 +31,20 @@ class ResBlock(nn.Module):
         return input + self.net(input)
 
 
+class SkipConnection(nn.Module):
+    """
+    Skip-connection over the sequence of layers in the constructor.
+    The module passes input data sequentially through these layers
+    and then adds original data to the result.
+    """
+    def __init__(self, *args):
+        super().__init__()
+        self.inner_net = nn.Sequential(*args)
+
+    def forward(self, input):
+        return input + self.inner_net(input)
+
+
 class MemoryLayer(nn.Module):
     """
     If output=False, this layer stores its input in a static class dictionary

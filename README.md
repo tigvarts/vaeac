@@ -139,7 +139,8 @@ It is used for inpainting by deafult.
 If these files are already in `model_dir` when `train.py` is started,
 `train.py` use `last_checkpoint.tar` as an initial state for training.
 
-One can also download pretrained model from [TBD](https://yadi.sk/TBD),
+One can also download pretrained model
+from [here](https://yadi.sk/d/l4cRWuuHIaZQJQ),
 put it into `celeba_model` directory and skip this step.
 4. After that, one can inpaint the test set by calling
 ```
