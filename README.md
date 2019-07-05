@@ -142,6 +142,7 @@ If these files are already in `model_dir` when `train.py` is started,
 One can also download pretrained model
 from [here](https://yadi.sk/d/l4cRWuuHIaZQJQ),
 put it into `celeba_model` directory and skip this step.
+
 4. After that, one can inpaint the test set by calling
 ```
 python inpaint.py --model_dir celeba_model --num_samples 3 \
