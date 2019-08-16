@@ -59,7 +59,7 @@ and a categorical feature with 10 classes the correct `--one_hot_max_sizes`
 arguments are 2 1 1 1 10.
 
 Validation ratio is the ratio of objects which will be used for validation
-and best model selection.
+and the best model selection.
 
 So the minial working example of calling `impute.py` is
 ```
