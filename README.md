@@ -165,3 +165,7 @@ please consider citing the paper:
     url={https://openreview.net/forum?id=SyxtJh0qYm},
 }
 ```
+
+## Link
+
+Tensorflow version: https://github.com/Baichenjia/VAEAC
