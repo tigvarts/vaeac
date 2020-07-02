@@ -96,7 +96,7 @@ class GaussianCategoricalLoss(Module):
     In the first case the distribution over feature is categorical,
     in the second case it is Gaussian.
 
-    For example, if one_hot_max_sizes is [3, 1, 1, 2], then the distribution
+    For example, if one_hot_max_sizes is [4, 1, 1, 2], then the distribution
     parameters for one object is the vector
     [p_00, p_01, p_02, p_03, mu_1, sigma_1, mu_2, sigma_2, p_30, p_31],
     where Softmax([p_00, p_01, p_02, p_03]) and Softmax([p_30, p_31])
